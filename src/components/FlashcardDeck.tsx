@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { cards } from "@/data/cards";
-import Overview from "@/components/Overview";
 
 // A gesture counts as a vertical swipe (vs a tap or a horizontal drag) when it
 // moves further than this many pixels and is more vertical than horizontal.
@@ -18,13 +17,21 @@ function RetrieveIcon() {
   );
 }
 
-export default function FlashcardDeck() {
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  /** The control that opened the sheet — focus returns here on close. */
+  triggerRef?: RefObject<HTMLButtonElement | null>;
+};
+
+// The flashcard deck — a light slide-up sheet revealed from the field guide.
+export default function FlashcardDeck({ open, onClose, triggerRef }: Props) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [overviewOpen, setOverviewOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
-  const revealBtnRef = useRef<HTMLButtonElement>(null);
-  // Start point of the current touch, for swipe detection.
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+  // Start point of the current touch, for swipe-down-to-close detection.
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   const card = cards[index];
@@ -35,21 +42,30 @@ export default function FlashcardDeck() {
     setFlipped(false);
   }, []);
 
-  // Keyboard: ↑ reveals the overview, ↓/Esc dismisses it. Left/Right move
-  // between cards, but only while the overview is closed.
+  // Card navigation keys, active only while the sheet is open.
   useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp") setOverviewOpen(true);
-      else if (e.key === "ArrowDown" || e.key === "Escape") setOverviewOpen(false);
-      else if (!overviewOpen && e.key === "ArrowRight") go(index + 1);
-      else if (!overviewOpen && e.key === "ArrowLeft") go(index - 1);
+      if (e.key === "ArrowRight") go(index + 1);
+      else if (e.key === "ArrowLeft") go(index - 1);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [index, go, overviewOpen]);
+  }, [open, index, go]);
 
-  // A single vertical swipe toggles the overview: up reveals, down dismisses.
-  // The threshold keeps a tap (which flips the card) from triggering it.
+  // Focus the close button on open; return focus to the trigger on close.
+  useEffect(() => {
+    if (open) {
+      wasOpen.current = true;
+      closeRef.current?.focus();
+    } else if (wasOpen.current) {
+      wasOpen.current = false;
+      triggerRef?.current?.focus();
+    }
+  }, [open, triggerRef]);
+
+  // A vertical swipe down dismisses the sheet. The threshold keeps a tap (which
+  // flips the card) from triggering it.
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
@@ -61,8 +77,8 @@ export default function FlashcardDeck() {
     const t = e.changedTouches[0];
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
-    if (Math.abs(dy) < SWIPE_THRESHOLD || Math.abs(dy) <= Math.abs(dx)) return;
-    setOverviewOpen(dy < 0); // swipe up (dy negative) reveals; down dismisses
+    if (dy < SWIPE_THRESHOLD || Math.abs(dy) <= Math.abs(dx)) return;
+    onClose(); // swipe down (dy positive, dominant) closes
   };
 
   const toggleFlip = () => setFlipped((f) => !f);
@@ -71,13 +87,25 @@ export default function FlashcardDeck() {
   const isBareNumber = card.num === "00" || card.num === "★";
 
   return (
-    <main className="deck" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <section
+      className={`deck sheet${open ? " open" : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Flashcard deck"
+      inert={!open}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       <svg className="curve" viewBox="0 0 1000 300" preserveAspectRatio="none" aria-hidden="true">
         {/* the forgetting curve: retention decaying over time */}
         <path d="M0,40 C120,150 200,225 360,255 C520,282 720,292 1000,296" />
         {/* spaced reviews lifting it back up */}
         <path className="spaced" d="M250,232 L250,90 M500,275 L500,120 M750,288 L750,150" />
       </svg>
+
+      <button ref={closeRef} className="overview-close deck-close" aria-label="Close flashcards" onClick={onClose}>
+        ×
+      </button>
 
       <header className="deck-header">
         <div className="eyebrow">A deck for retrieval practice</div>
@@ -161,15 +189,6 @@ export default function FlashcardDeck() {
           →
         </button>
       </div>
-
-      <button ref={revealBtnRef} className="reveal-btn" onClick={() => setOverviewOpen(true)} aria-haspopup="dialog">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M18 15l-6-6-6 6" />
-        </svg>
-        <span>Swipe up for the field guide</span>
-      </button>
-
-      <Overview open={overviewOpen} onClose={() => setOverviewOpen(false)} triggerRef={revealBtnRef} />
-    </main>
+    </section>
   );
 }

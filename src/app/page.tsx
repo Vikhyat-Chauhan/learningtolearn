@@ -1,5 +1,5 @@
-import FlashcardDeck from "@/components/FlashcardDeck";
+import LearnApp from "@/components/LearnApp";
 
 export default function Home() {
-  return <FlashcardDeck />;
+  return <LearnApp />;
 }
