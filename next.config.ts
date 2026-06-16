@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
-// Mirrors Hearth's conservative security headers, trimmed to what a fully
-// static, client-side flashcard deck needs (no Supabase/external connect-src).
-// 'unsafe-inline' is required by Next.js's inline runtime bootstrap.
+// Mirrors Hearth's conservative security headers. connect-src allows Supabase
+// (Auth + REST + Realtime over https/wss) for the Revision feature's sign-in and
+// data sync. 'unsafe-inline' is required by Next.js's inline runtime bootstrap.
 const csp = [
   "default-src 'self'",
   // va.vercel-scripts.com serves the Vercel Web Analytics script.
@@ -10,7 +10,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://va.vercel-scripts.com",
+  "connect-src 'self' https://va.vercel-scripts.com https://*.supabase.co wss://*.supabase.co",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

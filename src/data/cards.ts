@@ -11,7 +11,7 @@ export type Card = {
   cite: string;
 };
 
-// Copied verbatim from the original mastery-flashcards.html deck.
+// Copied verbatim from the original standalone HTML deck.
 export const cards: Card[] = [
   {
     label: "The principle",
