@@ -3,8 +3,9 @@
 // Learn experience needs no data, so signed-out visitors fetch nothing.
 
 import { desc, eq } from "drizzle-orm";
-import { db, topics as topicsTable, reviews as reviewsTable } from "@/db";
+import { db, topics as topicsTable, reviews as reviewsTable, profiles } from "@/db";
 import { getUser } from "@/lib/supabase/server";
+import { DEFAULT_LADDER } from "@/lib/spacing";
 import LearnApp from "@/components/LearnApp";
 import type { TopicVM, ReviewVM, UserVM } from "@/lib/revision-types";
 import type { View } from "@/components/TopNav";
@@ -22,6 +23,7 @@ export default async function Home({
   let userVM: UserVM | null = null;
   let topicVMs: TopicVM[] = [];
   let reviewVMs: ReviewVM[] = [];
+  let reviewLadder: number[] = [...DEFAULT_LADDER];
 
   if (user) {
     userVM = {
@@ -29,6 +31,12 @@ export default async function Home({
       email: user.email ?? "",
       name: (user.user_metadata?.full_name as string | undefined) ?? null,
     };
+
+    const [profileRow] = await db
+      .select({ reviewLadder: profiles.reviewLadder })
+      .from(profiles)
+      .where(eq(profiles.id, user.id));
+    if (profileRow?.reviewLadder?.length) reviewLadder = profileRow.reviewLadder;
 
     const rows = await db
       .select()
@@ -66,6 +74,7 @@ export default async function Home({
       user={userVM}
       topics={topicVMs}
       reviews={reviewVMs}
+      reviewLadder={reviewLadder}
       authError={error ?? null}
     />
   );

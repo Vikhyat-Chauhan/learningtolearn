@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { addDays, formatDay, formatShort, type ISODate } from "@/lib/dates";
-import { REVIEW_LADDER } from "@/lib/spacing";
 
 type Props = {
   /** The day the topic will be logged against (the selected calendar cell). */
   day: ISODate;
+  /** The user's current review ladder, for the schedule preview. */
+  reviewLadder: number[];
   pending: boolean;
   onClose: () => void;
   onSubmit: (fields: { title: string; notes: string }) => void;
@@ -16,7 +17,7 @@ type Props = {
 // A slide-in panel for logging a new topic against the selected calendar day.
 // Mirrors TopicDetail's overlay shell so it shares the look, focus trap, and
 // Esc-to-close behaviour.
-export default function AddTopic({ day, pending, onClose, onSubmit }: Props) {
+export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   useFocusTrap(panelRef, true);
@@ -41,7 +42,7 @@ export default function AddTopic({ day, pending, onClose, onSubmit }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const ladderPreview = REVIEW_LADDER.map((d) => formatShort(addDays(day, d))).join(", ");
+  const ladderPreview = reviewLadder.map((d) => formatShort(addDays(day, d))).join(", ");
 
   return (
     <div className="td-overlay" onClick={onClose}>

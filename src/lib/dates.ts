@@ -28,6 +28,12 @@ export function addDays(iso: ISODate, n: number): ISODate {
   return fmt(d);
 }
 
+// Whole-day difference `b - a` (positive when b is later). UTC math keeps it
+// stable regardless of timezone, matching the other helpers here.
+export function daysBetween(a: ISODate, b: ISODate): number {
+  return Math.round((toUTC(b).getTime() - toUTC(a).getTime()) / 86_400_000);
+}
+
 // Day of week, Monday = 0 … Sunday = 6.
 function mondayIndex(iso: ISODate): number {
   return (toUTC(iso).getUTCDay() + 6) % 7;

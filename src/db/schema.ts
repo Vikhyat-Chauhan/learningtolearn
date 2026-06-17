@@ -21,6 +21,9 @@ export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey(), // = auth.users.id
   email: text("email").notNull(),
   name: text("name"),
+  // The user's spaced-repetition ladder (day offsets). Defaults to DEFAULT_LADDER
+  // in src/lib/spacing.ts; read server-side when materializing reviews.
+  reviewLadder: integer("review_ladder").array().notNull().default([1, 3, 7, 14, 30]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -55,7 +58,7 @@ export const reviews = pgTable(
     userId: uuid("user_id").notNull(),
     // The day this review is due (loggedOn + ladder offset).
     dueOn: date("due_on").notNull(),
-    // 0..N — which rung of REVIEW_LADDER produced this review.
+    // 0..N — which rung of the user's review ladder produced this review.
     intervalIndex: integer("interval_index").notNull(),
     // null until the user checks it off.
     completedAt: timestamp("completed_at", { withTimezone: true }),

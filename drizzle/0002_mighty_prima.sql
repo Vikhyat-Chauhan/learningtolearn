@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "review_ladder" integer[] DEFAULT '{1,3,7,14,30}' NOT NULL;
