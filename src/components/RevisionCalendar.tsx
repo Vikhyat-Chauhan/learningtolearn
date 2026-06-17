@@ -64,6 +64,8 @@ export default function RevisionCalendar({ topics, reviews, surface = "calendar"
     return m;
   }, [reviews]);
 
+  const topicById = useMemo(() => new Map(topics.map((t) => [t.id, t])), [topics]);
+
   const grid: ISODate[][] = mode === "month" ? monthMatrix(anchor) : [weekDays(anchor)];
   const flatDays = grid.flat();
 
@@ -290,21 +292,39 @@ export default function RevisionCalendar({ topics, reviews, surface = "calendar"
           {selectedReviews.length === 0 ? (
             <p className="muted">No reviews due.</p>
           ) : (
-            <ul className="dd-reviews">
+            <ul className="dd-topics">
               {selectedReviews.map((r) => {
                 const overdue = !r.completed && r.dueOn < today;
+                const topic = topicById.get(r.topicId);
                 return (
                   <li key={r.id} className={overdue ? "is-overdue" : ""}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={r.completed}
-                        disabled={pending}
-                        onChange={() => toggleReview(r)}
-                      />
-                      <span className={r.completed ? "done" : ""}>{r.topicTitle}</span>
-                    </label>
+                    <button
+                      className="dd-topic-open"
+                      onClick={() => setDetailTopicId(r.topicId)}
+                      aria-label={`View details for ${r.topicTitle}`}
+                    >
+                      <span className={`log-title-txt ${r.completed ? "done" : ""}`}>{r.topicTitle}</span>
+                      {topic?.notes && <span className="log-notes-txt">{topic.notes}</span>}
+                    </button>
                     {overdue && <span className="overdue-tag">overdue</span>}
+                    <input
+                      type="checkbox"
+                      className="dd-check"
+                      checked={r.completed}
+                      disabled={pending}
+                      onChange={() => toggleReview(r)}
+                      aria-label={`Mark ${r.topicTitle} reviewed`}
+                    />
+                    {topic && (
+                      <button
+                        className="del-btn"
+                        onClick={() => removeTopic(topic)}
+                        disabled={pending}
+                        aria-label={`Delete ${r.topicTitle}`}
+                      >
+                        ×
+                      </button>
+                    )}
                   </li>
                 );
               })}
