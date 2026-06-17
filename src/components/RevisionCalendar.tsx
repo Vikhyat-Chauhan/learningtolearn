@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { completeReview, uncompleteReview, deleteTopic, restoreTopic, updateTopic } from "@/app/actions";
+import { completeReview, uncompleteReview, deleteTopic, restoreTopic, updateTopic, logTopic } from "@/app/actions";
 import { useToast } from "@/components/Toast";
 import TopicDetail from "@/components/TopicDetail";
+import AddTopic from "@/components/AddTopic";
+import { REVIEW_LADDER } from "@/lib/spacing";
 import {
   WEEKDAY_LABELS,
   addDays,
@@ -22,7 +24,7 @@ import {
 } from "@/lib/dates";
 import type { TopicVM, ReviewVM } from "@/lib/revision-types";
 
-type Props = { topics: TopicVM[]; reviews: ReviewVM[] };
+type Props = { topics: TopicVM[]; reviews: ReviewVM[]; surface?: "today" | "calendar" };
 type Mode = "month" | "week";
 
 function errorMessage(err: unknown): string {
@@ -31,11 +33,12 @@ function errorMessage(err: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-export default function RevisionCalendar({ topics, reviews }: Props) {
+export default function RevisionCalendar({ topics, reviews, surface = "calendar" }: Props) {
   const [mode, setMode] = useState<Mode>("month");
   const [anchor, setAnchor] = useState<ISODate>(todayISO());
   const [selected, setSelected] = useState<ISODate>(todayISO());
   const [detailTopicId, setDetailTopicId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [pending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -79,6 +82,15 @@ export default function RevisionCalendar({ topics, reviews }: Props) {
   // Derive the open topic from props (not stored state) so the panel reflects
   // edits after the page revalidates.
   const detailTopic = detailTopicId ? topics.find((t) => t.id === detailTopicId) ?? null : null;
+
+  // The Today surface has no grid — pin the selection to today so adds/edits and
+  // the day detail always target the current day.
+  useEffect(() => {
+    if (surface === "today") {
+      setSelected(today);
+      setAnchor(today);
+    }
+  }, [surface, today]);
 
   // Keep the focused cell in sync after keyboard navigation moves the selection.
   useEffect(() => {
@@ -159,8 +171,24 @@ export default function RevisionCalendar({ topics, reviews }: Props) {
       }
     });
 
+  const addTopic = (fields: { title: string; notes: string }) =>
+    startTransition(async () => {
+      try {
+        await logTopic({ title: fields.title, notes: fields.notes || undefined, loggedOn: selected });
+        setAdding(false);
+        toast({
+          message: `“${fields.title}” logged — first review ${formatShort(addDays(selected, REVIEW_LADDER[0]))}.`,
+          variant: "success",
+        });
+      } catch (err) {
+        toast({ message: errorMessage(err), variant: "error" });
+      }
+    });
+
   return (
-    <section className="cal">
+    <section className={`cal ${surface === "today" ? "cal-today" : ""}`}>
+      {surface === "calendar" && (
+        <>
       <div className="cal-toolbar">
         <div className="cal-modes">
           <button className={`seg ${mode === "week" ? "active" : ""}`} onClick={() => setMode("week")}>Week</button>
@@ -251,9 +279,11 @@ export default function RevisionCalendar({ topics, reviews }: Props) {
           <li className="agenda-empty muted">Nothing scheduled this {mode}.</li>
         )}
       </ul>
+        </>
+      )}
 
       <div className={`day-detail${pending ? " is-pending" : ""}`}>
-        <h3>{formatDay(selected)}</h3>
+        <h3>{isToday(selected) ? `Today · ${formatShort(selected)}` : formatDay(selected)}</h3>
 
         <div className="dd-block">
           <h4>Due for revision</h4>
@@ -283,7 +313,14 @@ export default function RevisionCalendar({ topics, reviews }: Props) {
         </div>
 
         <div className="dd-block">
-          <h4>Logged this day</h4>
+          <div className="dd-block-head">
+            <h4>Logged this day</h4>
+            {selected <= today && (
+              <button className="dd-add" onClick={() => setAdding(true)} disabled={pending}>
+                + Add topic
+              </button>
+            )}
+          </div>
           {selectedTopics.length === 0 ? (
             <p className="muted">Nothing logged.</p>
           ) : (
@@ -322,6 +359,15 @@ export default function RevisionCalendar({ topics, reviews }: Props) {
           onToggleReview={toggleReview}
           onDelete={removeTopic}
           onSave={saveTopic}
+        />
+      )}
+
+      {adding && (
+        <AddTopic
+          day={selected}
+          pending={pending}
+          onClose={() => setAdding(false)}
+          onSubmit={addTopic}
         />
       )}
     </section>

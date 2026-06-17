@@ -541,11 +541,6 @@
   .overview-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  /* Clear the fixed top tab bar (≈58px tall) so the centered pill no longer
-     overlaps the left-aligned eyebrow/heading at narrow-to-mid widths. */
-  .overview-inner {
-    padding-top: 68px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -566,9 +561,6 @@
   }
   .overview-grid {
     grid-template-columns: 1fr;
-  }
-  .overview-inner {
-    padding-top: 72px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -592,22 +584,58 @@
    Reuses the deck's design tokens (--paper, --persimmon, --sage, --radius…).
    ───────────────────────────────────────────────────────────────────────── */
 
-/* Fixed pill nav toggling Learn / Revision. Sits above the guide, below the
-   deck sheet (z-index 10) so opening the flashcards covers it. */
-.tabs {
-  position: fixed;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
+/* Full-width sticky app bar. Sits above the guide, below the deck sheet
+   (z-index 10) so opening the flashcards covers it. In normal flow (sticky), so
+   page content sits naturally below it. */
+.topnav {
+  position: sticky;
+  top: 0;
   z-index: 6;
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: rgba(245, 239, 227, 0.86);
+  align-items: center;
+  gap: 16px;
+  padding: 10px clamp(16px, 4vw, 40px);
+  background: rgba(245, 239, 227, 0.9);
   backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--paper-edge);
+}
+.topnav-brand {
+  font-family: var(--font-display), "Fraunces", Georgia, serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--graphite);
+}
+.topnav-views {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.5);
   border: 1px solid var(--paper-edge);
   border-radius: 100px;
-  box-shadow: 0 8px 24px -16px rgba(30, 45, 41, 0.5);
+}
+.topnav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.topnav-surface {
+  display: flex;
+  gap: 4px;
+}
+.topnav-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.topnav-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tab {
   appearance: none;
@@ -635,6 +663,22 @@
   outline-offset: 2px;
 }
 
+@media (max-width: 640px) {
+  .topnav {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+  .topnav-right {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+  .topnav-name {
+    max-width: 120px;
+  }
+}
+
 /* Revision page surface — same paper feel as the field guide. */
 .rev {
   min-height: 100vh;
@@ -646,7 +690,7 @@
 .rev-inner {
   max-width: 920px;
   margin: 0 auto;
-  padding: clamp(64px, 8vw, 92px) clamp(20px, 4vw, 48px) 64px;
+  padding: clamp(28px, 5vw, 56px) clamp(20px, 4vw, 48px) 64px;
 }
 .rev-head {
   max-width: 680px;
@@ -677,15 +721,6 @@
   color: var(--muted);
 }
 
-.rev-account {
-  margin-top: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 13px;
-  color: var(--muted);
-}
 .link-btn {
   appearance: none;
   border: none;
@@ -744,19 +779,6 @@
 }
 
 /* ── Topic logger ── */
-.logger {
-  margin-top: 32px;
-  padding: 24px;
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.45);
-}
-.log-form {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto auto;
-  gap: 14px;
-  align-items: end;
-}
 .field {
   display: flex;
   flex-direction: column;
@@ -786,9 +808,6 @@
   outline: 2px solid var(--sage);
   outline-offset: 1px;
   border-color: var(--sage);
-}
-.field-date input {
-  min-width: 150px;
 }
 .log-submit {
   appearance: none;
@@ -1136,6 +1155,9 @@
 }
 
 /* ── Day detail ── */
+.cal-today .day-detail {
+  margin-top: 0;
+}
 .day-detail {
   margin-top: 24px;
   padding: 22px;
@@ -1153,6 +1175,36 @@
   text-transform: uppercase;
   color: var(--sage);
   margin-bottom: 10px;
+}
+.dd-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.dd-block-head h4 {
+  margin-bottom: 0;
+}
+.dd-add {
+  appearance: none;
+  border: 1px solid var(--persimmon);
+  background: var(--persimmon);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.dd-add:hover {
+  opacity: 0.88;
+}
+.dd-add:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 .dd-reviews {
   list-style: none;
@@ -1198,18 +1250,7 @@
   color: var(--persimmon);
 }
 
-@media (max-width: 720px) {
-  .log-form {
-    grid-template-columns: 1fr 1fr;
-  }
-  .log-submit {
-    grid-column: 1 / -1;
-  }
-}
 @media (max-width: 480px) {
-  .log-form {
-    grid-template-columns: 1fr;
-  }
   .cal-cell {
     min-height: 52px;
     padding: 6px;

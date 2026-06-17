@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import TopicLogger from "@/components/TopicLogger";
 import RevisionCalendar from "@/components/RevisionCalendar";
 import SignInWithGoogle from "@/components/SignInWithGoogle";
 import { REVIEW_LADDER } from "@/lib/spacing";
+import type { RevSurface } from "@/components/TopNav";
 import type { TopicVM, ReviewVM, UserVM } from "@/lib/revision-types";
 
 type Props = {
@@ -12,6 +12,7 @@ type Props = {
   topics: TopicVM[];
   reviews: ReviewVM[];
   authError: string | null;
+  surface: RevSurface;
 };
 
 // Friendly copy for the error codes the OAuth callback can redirect with.
@@ -22,9 +23,10 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
 };
 
 // The Revision surface. Signed out, it pitches the feature and offers Google
-// sign-in. Signed in, it shows the topic logger and the spaced-repetition
-// calendar (data fetched server-side and passed down).
-export default function RevisionView({ user, topics, reviews, authError }: Props) {
+// sign-in. Signed in, it shows the spaced-repetition calendar — adding topics
+// happens contextually per day from within it (data fetched server-side and
+// passed down).
+export default function RevisionView({ user, topics, reviews, authError, surface }: Props) {
   const [dismissedError, setDismissedError] = useState(false);
   const errorMessage =
     authError && !dismissedError
@@ -46,39 +48,33 @@ export default function RevisionView({ user, topics, reviews, authError }: Props
             </button>
           </div>
         )}
-        <header className="rev-head">
-          <div className="eyebrow">Spaced repetition</div>
-          <h2>
-            Log what you learned. <em>Revise</em> it on schedule.
-          </h2>
-          <p className="rev-principle">
-            Note each topic the day you cover it. We resurface it on a forgetting-curve
-            ladder — {REVIEW_LADDER.map((d) => `+${d}`).join(", ")} days — so it sticks.
-          </p>
-        </header>
-
         {user ? (
           <>
-            <div className="rev-account">
-              <span>Signed in as {user.name ?? user.email}</span>
-              <form action="/auth/signout" method="post">
-                <button className="link-btn" type="submit">Sign out</button>
-              </form>
-            </div>
-            <TopicLogger topics={topics} />
             {topics.length === 0 && (
               <p className="rev-empty">
-                Log your first topic above to start your revision schedule — it&apos;ll
-                appear on the calendar below.
+                Tap <strong>+ Add topic</strong> to log what you learned today and start your
+                revision schedule.
               </p>
             )}
-            <RevisionCalendar topics={topics} reviews={reviews} />
+            <RevisionCalendar topics={topics} reviews={reviews} surface={surface} />
           </>
         ) : (
-          <div className="rev-signin">
-            <p>Sign in to log topics and keep your revision schedule synced across devices.</p>
-            <SignInWithGoogle />
-          </div>
+          <>
+            <header className="rev-head">
+              <div className="eyebrow">Spaced repetition</div>
+              <h2>
+                Log what you learned. <em>Revise</em> it on schedule.
+              </h2>
+              <p className="rev-principle">
+                Note each topic the day you cover it. We resurface it on a forgetting-curve
+                ladder — {REVIEW_LADDER.map((d) => `+${d}`).join(", ")} days — so it sticks.
+              </p>
+            </header>
+            <div className="rev-signin">
+              <p>Sign in to log topics and keep your revision schedule synced across devices.</p>
+              <SignInWithGoogle />
+            </div>
+          </>
         )}
       </div>
     </main>
