@@ -3,7 +3,7 @@
 import { useState } from "react";
 import RevisionCalendar from "@/components/RevisionCalendar";
 import SignInWithGoogle from "@/components/SignInWithGoogle";
-import { REVIEW_LADDER } from "@/lib/spacing";
+import { DEFAULT_LADDER } from "@/lib/spacing";
 import type { RevSurface } from "@/components/TopNav";
 import type { TopicVM, ReviewVM, UserVM } from "@/lib/revision-types";
 
@@ -11,6 +11,7 @@ type Props = {
   user: UserVM | null;
   topics: TopicVM[];
   reviews: ReviewVM[];
+  reviewLadder: number[];
   authError: string | null;
   surface: RevSurface;
 };
@@ -26,7 +27,7 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
 // sign-in. Signed in, it shows the spaced-repetition calendar — adding topics
 // happens contextually per day from within it (data fetched server-side and
 // passed down).
-export default function RevisionView({ user, topics, reviews, authError, surface }: Props) {
+export default function RevisionView({ user, topics, reviews, reviewLadder, authError, surface }: Props) {
   const [dismissedError, setDismissedError] = useState(false);
   const errorMessage =
     authError && !dismissedError
@@ -56,7 +57,7 @@ export default function RevisionView({ user, topics, reviews, authError, surface
                 revision schedule.
               </p>
             )}
-            <RevisionCalendar topics={topics} reviews={reviews} surface={surface} />
+            <RevisionCalendar topics={topics} reviews={reviews} reviewLadder={reviewLadder} surface={surface} />
           </>
         ) : (
           <>
@@ -67,7 +68,7 @@ export default function RevisionView({ user, topics, reviews, authError, surface
               </h2>
               <p className="rev-principle">
                 Note each topic the day you cover it. We resurface it on a forgetting-curve
-                ladder — {REVIEW_LADDER.map((d) => `+${d}`).join(", ")} days — so it sticks.
+                ladder — {DEFAULT_LADDER.map((d) => `+${d}`).join(", ")} days — so it sticks.
               </p>
             </header>
             <div className="rev-signin">

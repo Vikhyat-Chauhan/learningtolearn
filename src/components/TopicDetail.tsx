@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
-import { formatDay, todayISO } from "@/lib/dates";
-import { REVIEW_LADDER } from "@/lib/spacing";
+import { daysBetween, formatDay, todayISO } from "@/lib/dates";
 import type { TopicVM, ReviewVM } from "@/lib/revision-types";
 
 type Props = {
@@ -58,11 +57,17 @@ export default function TopicDetail({
     if (editing) editTitleRef.current?.focus();
   }, [editing]);
 
-  // Show one row per ladder rung, ordered by interval, matched to its review row.
-  const ordered = REVIEW_LADDER.map((offset, idx) => {
-    const review = reviews.find((r) => r.intervalIndex === idx);
-    return { offset, idx, review };
-  });
+  // Show one row per review rung. Each topic carries its own materialized reviews,
+  // so the day-offset is derived from this review's own due date relative to when
+  // the topic was covered — not a global ladder (which the user may have since
+  // changed). Order by interval index, the rung order at log time.
+  const ordered = [...reviews]
+    .sort((a, b) => a.intervalIndex - b.intervalIndex)
+    .map((review) => ({
+      offset: daysBetween(topic.loggedOn, review.dueOn),
+      idx: review.intervalIndex,
+      review,
+    }));
 
   useEffect(() => {
     closeRef.current?.focus();

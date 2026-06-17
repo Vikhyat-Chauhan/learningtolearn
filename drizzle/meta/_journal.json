@@ -15,6 +15,13 @@
       "when": 1781634600000,
       "tag": "0001_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781672661504,
+      "tag": "0002_mighty_prima",
+      "breakpoints": true
     }
   ]
 }

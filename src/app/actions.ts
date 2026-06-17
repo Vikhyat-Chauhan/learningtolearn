@@ -6,9 +6,9 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
-import { db, topics, reviews } from "@/db";
+import { db, topics, reviews, profiles } from "@/db";
 import { getUser } from "@/lib/supabase/server";
-import { REVIEW_LADDER } from "@/lib/spacing";
+import { DEFAULT_LADDER, validateLadder } from "@/lib/spacing";
 import { addDays, type ISODate } from "@/lib/dates";
 
 class AuthError extends Error {
@@ -21,6 +21,29 @@ async function requireUserId(): Promise<string> {
   const user = await getUser();
   if (!user) throw new AuthError();
   return user.id;
+}
+
+// The user's spaced-repetition ladder, read server-side so review materialization
+// never trusts client input. Falls back to DEFAULT_LADDER if the profile is
+// missing (shouldn't happen — it's upserted at login).
+async function getUserLadder(userId: string): Promise<number[]> {
+  const [row] = await db
+    .select({ reviewLadder: profiles.reviewLadder })
+    .from(profiles)
+    .where(eq(profiles.id, userId));
+  return row?.reviewLadder ?? [...DEFAULT_LADDER];
+}
+
+// Persist a new ladder for the signed-in user. New topics logged afterwards use
+// it; existing topics keep their already-scheduled reviews (grandfathered).
+export async function updateReviewLadder(values: number[]) {
+  const userId = await requireUserId();
+  const ladder = validateLadder(values);
+  await db
+    .update(profiles)
+    .set({ reviewLadder: ladder })
+    .where(eq(profiles.id, userId));
+  revalidatePath("/");
 }
 
 export type LogTopicInput = {
@@ -36,6 +59,8 @@ export async function logTopic(input: LogTopicInput) {
   if (!title) throw new Error("Title is required");
   const loggedOn = input.loggedOn;
 
+  const ladder = await getUserLadder(userId);
+
   const [topic] = await db
     .insert(topics)
     .values({
@@ -47,7 +72,7 @@ export async function logTopic(input: LogTopicInput) {
     .returning({ id: topics.id });
 
   await db.insert(reviews).values(
-    REVIEW_LADDER.map((offset, intervalIndex) => ({
+    ladder.map((offset, intervalIndex) => ({
       topicId: topic.id,
       userId,
       dueOn: addDays(loggedOn, offset),
@@ -114,6 +139,7 @@ export async function restoreTopic(input: RestoreTopicInput) {
   const title = input.title.trim();
   if (!title) throw new Error("Title is required");
   const completed = new Set(input.completedIntervals ?? []);
+  const ladder = await getUserLadder(userId);
 
   const [topic] = await db
     .insert(topics)
@@ -126,7 +152,7 @@ export async function restoreTopic(input: RestoreTopicInput) {
     .returning({ id: topics.id });
 
   await db.insert(reviews).values(
-    REVIEW_LADDER.map((offset, intervalIndex) => ({
+    ladder.map((offset, intervalIndex) => ({
       topicId: topic.id,
       userId,
       dueOn: addDays(input.loggedOn, offset),

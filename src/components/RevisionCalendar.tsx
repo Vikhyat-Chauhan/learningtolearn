@@ -5,7 +5,6 @@ import { completeReview, uncompleteReview, deleteTopic, restoreTopic, updateTopi
 import { useToast } from "@/components/Toast";
 import TopicDetail from "@/components/TopicDetail";
 import AddTopic from "@/components/AddTopic";
-import { REVIEW_LADDER } from "@/lib/spacing";
 import {
   WEEKDAY_LABELS,
   addDays,
@@ -24,7 +23,12 @@ import {
 } from "@/lib/dates";
 import type { TopicVM, ReviewVM } from "@/lib/revision-types";
 
-type Props = { topics: TopicVM[]; reviews: ReviewVM[]; surface?: "today" | "calendar" };
+type Props = {
+  topics: TopicVM[];
+  reviews: ReviewVM[];
+  reviewLadder: number[];
+  surface?: "today" | "calendar";
+};
 type Mode = "month" | "week";
 
 function errorMessage(err: unknown): string {
@@ -33,7 +37,7 @@ function errorMessage(err: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-export default function RevisionCalendar({ topics, reviews, surface = "calendar" }: Props) {
+export default function RevisionCalendar({ topics, reviews, reviewLadder, surface = "calendar" }: Props) {
   const [mode, setMode] = useState<Mode>("month");
   const [anchor, setAnchor] = useState<ISODate>(todayISO());
   const [selected, setSelected] = useState<ISODate>(todayISO());
@@ -179,7 +183,7 @@ export default function RevisionCalendar({ topics, reviews, surface = "calendar"
         await logTopic({ title: fields.title, notes: fields.notes || undefined, loggedOn: selected });
         setAdding(false);
         toast({
-          message: `“${fields.title}” logged — first review ${formatShort(addDays(selected, REVIEW_LADDER[0]))}.`,
+          message: `“${fields.title}” logged — first review ${formatShort(addDays(selected, reviewLadder[0]))}.`,
           variant: "success",
         });
       } catch (err) {
@@ -375,6 +379,7 @@ export default function RevisionCalendar({ topics, reviews, surface = "calendar"
       {adding && (
         <AddTopic
           day={selected}
+          reviewLadder={reviewLadder}
           pending={pending}
           onClose={() => setAdding(false)}
           onSubmit={addTopic}

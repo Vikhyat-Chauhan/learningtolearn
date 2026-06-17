@@ -5,6 +5,7 @@ import FieldGuide from "@/components/FieldGuide";
 import FlashcardDeck from "@/components/FlashcardDeck";
 import TopNav, { type View, type RevSurface } from "@/components/TopNav";
 import RevisionView from "@/components/RevisionView";
+import SettingsModal from "@/components/SettingsModal";
 import { ToastProvider } from "@/components/Toast";
 import type { TopicVM, ReviewVM, UserVM } from "@/lib/revision-types";
 
@@ -19,6 +20,7 @@ type Props = {
   user: UserVM | null;
   topics: TopicVM[];
   reviews: ReviewVM[];
+  reviewLadder: number[];
   authError: string | null;
 };
 
@@ -26,14 +28,24 @@ type Props = {
 // reveal gesture. In the Learn view the field guide is the landing and the
 // flashcards slide up over it; the Revision view is a separate full-page
 // surface for logging topics and the spaced-repetition calendar.
-export default function LearnApp({ initialView, user, topics, reviews, authError }: Props) {
+export default function LearnApp({ initialView, user, topics, reviews, reviewLadder, authError }: Props) {
   const [view, setView] = useState<View>(initialView);
   const [revSurface, setRevSurface] = useState<RevSurface>("today");
+  // Live copy of the ladder so previews update immediately after a save, before
+  // the server revalidation re-renders the page with fresh props.
+  const [ladder, setLadder] = useState<number[]>(reviewLadder);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [flashOpen, setFlashOpen] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const [revealBtnVisible, setRevealBtnVisible] = useState(true);
   const revealBtnRef = useRef<HTMLButtonElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  // Re-sync the live ladder when the server sends fresh props (e.g. after the
+  // save revalidates the page).
+  useEffect(() => {
+    setLadder(reviewLadder);
+  }, [reviewLadder]);
 
   // Show the swipe-up hint once, the first time a visitor lands on the guide.
   useEffect(() => {
@@ -111,6 +123,7 @@ export default function LearnApp({ initialView, user, topics, reviews, authError
         surface={revSurface}
         onChangeSurface={setRevSurface}
         user={user}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       {view === "learn" ? (
@@ -134,7 +147,15 @@ export default function LearnApp({ initialView, user, topics, reviews, authError
           <FlashcardDeck open={flashOpen} onClose={() => setFlashOpen(false)} triggerRef={revealBtnRef} />
         </>
       ) : (
-        <RevisionView user={user} topics={topics} reviews={reviews} authError={authError} surface={revSurface} />
+        <RevisionView user={user} topics={topics} reviews={reviews} reviewLadder={ladder} authError={authError} surface={revSurface} />
+      )}
+
+      {user && settingsOpen && (
+        <SettingsModal
+          reviewLadder={ladder}
+          onClose={() => setSettingsOpen(false)}
+          onSaved={setLadder}
+        />
       )}
     </ToastProvider>
   );

@@ -11,12 +11,13 @@ type Props = {
   surface: RevSurface;
   onChangeSurface: (s: RevSurface) => void;
   user: UserVM | null;
+  onOpenSettings: () => void;
 };
 
 // Full-width sticky app bar. Holds the brand, the Learn/Revision switch, a
 // Today/Calendar switch (only inside Revision, when signed in), and the account
 // name + Sign out. Replaces the old centered pill nav.
-export default function TopNav({ view, onChangeView, surface, onChangeSurface, user }: Props) {
+export default function TopNav({ view, onChangeView, surface, onChangeSurface, user, onOpenSettings }: Props) {
   const showSurface = view === "revision" && !!user;
 
   return (
@@ -63,6 +64,9 @@ export default function TopNav({ view, onChangeView, surface, onChangeSurface, u
         {user && (
           <div className="topnav-account">
             <span className="topnav-name">{user.name ?? user.email}</span>
+            <button className="link-btn" type="button" onClick={onOpenSettings}>
+              Settings
+            </button>
             <form action="/auth/signout" method="post">
               <button className="link-btn" type="submit">Sign out</button>
             </form>
