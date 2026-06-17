@@ -5,27 +5,70 @@ import FieldGuide from "@/components/FieldGuide";
 import FlashcardDeck from "@/components/FlashcardDeck";
 import ViewTabs, { type View } from "@/components/ViewTabs";
 import RevisionView from "@/components/RevisionView";
+import { ToastProvider } from "@/components/Toast";
 import type { TopicVM, ReviewVM, UserVM } from "@/lib/revision-types";
 
 // A vertical swipe must exceed this and be more vertical than horizontal.
 const SWIPE_THRESHOLD = 60;
+
+// localStorage flag so the swipe-up onboarding hint shows only on first visit.
+const SWIPE_HINT_KEY = "mf-swipe-hint-seen";
 
 type Props = {
   initialView: View;
   user: UserVM | null;
   topics: TopicVM[];
   reviews: ReviewVM[];
+  authError: string | null;
 };
 
 // Top-level shell. Owns the Learn/Revision view switch plus the flashcard
 // reveal gesture. In the Learn view the field guide is the landing and the
 // flashcards slide up over it; the Revision view is a separate full-page
 // surface for logging topics and the spaced-repetition calendar.
-export default function LearnApp({ initialView, user, topics, reviews }: Props) {
+export default function LearnApp({ initialView, user, topics, reviews, authError }: Props) {
   const [view, setView] = useState<View>(initialView);
   const [flashOpen, setFlashOpen] = useState(false);
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
+  const [revealBtnVisible, setRevealBtnVisible] = useState(true);
   const revealBtnRef = useRef<HTMLButtonElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  // Show the swipe-up hint once, the first time a visitor lands on the guide.
+  useEffect(() => {
+    if (view !== "learn") return;
+    try {
+      if (!localStorage.getItem(SWIPE_HINT_KEY)) setShowSwipeHint(true);
+    } catch {
+      /* private mode / storage disabled — just skip the hint */
+    }
+  }, [view]);
+
+  // Track whether the in-flow reveal button is on screen. The fixed hint pill
+  // duplicates that button, so we only surface it while the button is scrolled
+  // out of view — never both at once (which read as a rendering glitch).
+  useEffect(() => {
+    if (view !== "learn") return;
+    const btn = revealBtnRef.current;
+    if (!btn) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setRevealBtnVisible(entry.isIntersecting),
+      { threshold: 0.5 },
+    );
+    observer.observe(btn);
+    return () => observer.disconnect();
+  }, [view]);
+
+  // Dismiss the hint once the deck has been opened (gesture learned).
+  useEffect(() => {
+    if (!flashOpen || !showSwipeHint) return;
+    setShowSwipeHint(false);
+    try {
+      localStorage.setItem(SWIPE_HINT_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }, [flashOpen, showSwipeHint]);
 
   // ↑ opens the flashcards, ↓ / Esc closes them — only relevant in the Learn view.
   useEffect(() => {
@@ -60,7 +103,7 @@ export default function LearnApp({ initialView, user, topics, reviews }: Props) 
   };
 
   return (
-    <>
+    <ToastProvider>
       <ViewTabs view={view} onChange={setView} />
 
       {view === "learn" ? (
@@ -71,11 +114,21 @@ export default function LearnApp({ initialView, user, topics, reviews }: Props) 
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
           />
+          {showSwipeHint && !flashOpen && !revealBtnVisible && (
+            <button
+              className="swipe-hint"
+              onClick={() => setFlashOpen(true)}
+              aria-label="Open the flashcards"
+            >
+              <span className="swipe-hint-arrow" aria-hidden="true">↑</span>
+              Swipe up for the flashcards
+            </button>
+          )}
           <FlashcardDeck open={flashOpen} onClose={() => setFlashOpen(false)} triggerRef={revealBtnRef} />
         </>
       ) : (
-        <RevisionView user={user} topics={topics} reviews={reviews} />
+        <RevisionView user={user} topics={topics} reviews={reviews} authError={authError} />
       )}
-    </>
+    </ToastProvider>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { cards } from "@/data/cards";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 // A gesture counts as a vertical swipe (vs a tap or a horizontal drag) when it
 // moves further than this many pixels and is more vertical than horizontal.
@@ -29,8 +30,12 @@ export default function FlashcardDeck({ open, onClose, triggerRef }: Props) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
+
+  // Keep Tab focus inside the sheet while it's open.
+  useFocusTrap(sheetRef, open);
   // Start point of the current touch, for swipe-down-to-close detection.
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
@@ -88,6 +93,7 @@ export default function FlashcardDeck({ open, onClose, triggerRef }: Props) {
 
   return (
     <section
+      ref={sheetRef}
       className={`deck sheet${open ? " open" : ""}`}
       role="dialog"
       aria-modal="true"
@@ -142,7 +148,7 @@ export default function FlashcardDeck({ open, onClose, triggerRef }: Props) {
               <div className="body">
                 <p className="cue">{card.cue}</p>
               </div>
-              <div className="hint">
+              <div className={`hint${index === 0 ? " hint-pulse" : ""}`}>
                 <RetrieveIcon />
                 Tap the card to reveal
               </div>

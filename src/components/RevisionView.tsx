@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import TopicLogger from "@/components/TopicLogger";
 import RevisionCalendar from "@/components/RevisionCalendar";
 import SignInWithGoogle from "@/components/SignInWithGoogle";
@@ -10,15 +11,41 @@ type Props = {
   user: UserVM | null;
   topics: TopicVM[];
   reviews: ReviewVM[];
+  authError: string | null;
+};
+
+// Friendly copy for the error codes the OAuth callback can redirect with.
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  missing_code: "Sign-in didn't complete — no authorization code came back. Please try again.",
+  auth_failed: "We couldn't sign you in with Google. Please try again.",
+  profile_failed: "You're signed in, but we couldn't set up your profile. Please try again.",
 };
 
 // The Revision surface. Signed out, it pitches the feature and offers Google
 // sign-in. Signed in, it shows the topic logger and the spaced-repetition
 // calendar (data fetched server-side and passed down).
-export default function RevisionView({ user, topics, reviews }: Props) {
+export default function RevisionView({ user, topics, reviews, authError }: Props) {
+  const [dismissedError, setDismissedError] = useState(false);
+  const errorMessage =
+    authError && !dismissedError
+      ? AUTH_ERROR_MESSAGES[authError] ?? "Something went wrong. Please try again."
+      : null;
+
   return (
     <main className="rev">
       <div className="rev-inner">
+        {errorMessage && (
+          <div className="rev-error" role="alert">
+            <span>{errorMessage}</span>
+            <button
+              className="rev-error-close"
+              aria-label="Dismiss"
+              onClick={() => setDismissedError(true)}
+            >
+              ×
+            </button>
+          </div>
+        )}
         <header className="rev-head">
           <div className="eyebrow">Spaced repetition</div>
           <h2>
@@ -39,6 +66,12 @@ export default function RevisionView({ user, topics, reviews }: Props) {
               </form>
             </div>
             <TopicLogger topics={topics} />
+            {topics.length === 0 && (
+              <p className="rev-empty">
+                Log your first topic above to start your revision schedule — it&apos;ll
+                appear on the calendar below.
+              </p>
+            )}
             <RevisionCalendar topics={topics} reviews={reviews} />
           </>
         ) : (

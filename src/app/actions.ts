@@ -76,9 +76,64 @@ export async function uncompleteReview(reviewId: string) {
   revalidatePath("/");
 }
 
+export type UpdateTopicInput = { id: string; title: string; notes?: string | null };
+
+// Edit an existing topic's title/notes in place. The covered-on date is not
+// editable, so the review ladder (whose due dates derive from it) is untouched.
+export async function updateTopic(input: UpdateTopicInput) {
+  const userId = await requireUserId();
+  const title = input.title.trim();
+  if (!title) throw new Error("Title is required");
+  await db
+    .update(topics)
+    .set({ title, notes: input.notes?.trim() || null })
+    .where(and(eq(topics.id, input.id), eq(topics.userId, userId)));
+  revalidatePath("/");
+}
+
 // Delete a topic; its reviews cascade.
 export async function deleteTopic(topicId: string) {
   const userId = await requireUserId();
   await db.delete(topics).where(and(eq(topics.id, topicId), eq(topics.userId, userId)));
+  revalidatePath("/");
+}
+
+export type RestoreTopicInput = {
+  title: string;
+  notes?: string | null;
+  loggedOn: ISODate;
+  /** Interval indexes (0–4) that were already completed, to preserve checkmarks. */
+  completedIntervals?: number[];
+};
+
+// Re-create a just-deleted topic and its review ladder. Used by the "Undo"
+// affordance after a delete. A new id is assigned (the page re-fetches), and any
+// previously-completed reviews are restored as done.
+export async function restoreTopic(input: RestoreTopicInput) {
+  const userId = await requireUserId();
+  const title = input.title.trim();
+  if (!title) throw new Error("Title is required");
+  const completed = new Set(input.completedIntervals ?? []);
+
+  const [topic] = await db
+    .insert(topics)
+    .values({
+      userId,
+      title,
+      notes: input.notes?.trim() || null,
+      loggedOn: input.loggedOn,
+    })
+    .returning({ id: topics.id });
+
+  await db.insert(reviews).values(
+    REVIEW_LADDER.map((offset, intervalIndex) => ({
+      topicId: topic.id,
+      userId,
+      dueOn: addDays(input.loggedOn, offset),
+      intervalIndex,
+      completedAt: completed.has(intervalIndex) ? new Date() : null,
+    })),
+  );
+
   revalidatePath("/");
 }
