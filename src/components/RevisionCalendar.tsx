@@ -315,16 +315,6 @@ export default function RevisionCalendar({ topics, reviews, surface = "calendar"
                       onChange={() => toggleReview(r)}
                       aria-label={`Mark ${r.topicTitle} reviewed`}
                     />
-                    {topic && (
-                      <button
-                        className="del-btn"
-                        onClick={() => removeTopic(topic)}
-                        disabled={pending}
-                        aria-label={`Delete ${r.topicTitle}`}
-                      >
-                        ×
-                      </button>
-                    )}
                   </li>
                 );
               })}
