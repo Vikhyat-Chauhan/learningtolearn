@@ -1206,39 +1206,17 @@
   opacity: 0.55;
   cursor: default;
 }
-.dd-reviews {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.dd-reviews li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 9px 14px;
-  background: #fff;
-  border: 1px solid var(--paper-edge);
-  border-radius: 10px;
-}
-.dd-reviews li.is-overdue {
+.dd-topics li.is-overdue {
   border-color: rgba(224, 96, 59, 0.5);
 }
-.dd-reviews label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  cursor: pointer;
-}
-.dd-reviews input[type="checkbox"] {
+.dd-check {
+  flex-shrink: 0;
   width: 17px;
   height: 17px;
   accent-color: var(--persimmon);
   cursor: pointer;
 }
-.dd-reviews .done {
+.log-title-txt.done {
   text-decoration: line-through;
   color: var(--muted);
 }
