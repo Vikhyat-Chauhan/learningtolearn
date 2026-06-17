@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import FieldGuide from "@/components/FieldGuide";
 import FlashcardDeck from "@/components/FlashcardDeck";
-import ViewTabs, { type View } from "@/components/ViewTabs";
+import TopNav, { type View, type RevSurface } from "@/components/TopNav";
 import RevisionView from "@/components/RevisionView";
 import { ToastProvider } from "@/components/Toast";
 import type { TopicVM, ReviewVM, UserVM } from "@/lib/revision-types";
@@ -28,6 +28,7 @@ type Props = {
 // surface for logging topics and the spaced-repetition calendar.
 export default function LearnApp({ initialView, user, topics, reviews, authError }: Props) {
   const [view, setView] = useState<View>(initialView);
+  const [revSurface, setRevSurface] = useState<RevSurface>("today");
   const [flashOpen, setFlashOpen] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const [revealBtnVisible, setRevealBtnVisible] = useState(true);
@@ -104,7 +105,13 @@ export default function LearnApp({ initialView, user, topics, reviews, authError
 
   return (
     <ToastProvider>
-      <ViewTabs view={view} onChange={setView} />
+      <TopNav
+        view={view}
+        onChangeView={setView}
+        surface={revSurface}
+        onChangeSurface={setRevSurface}
+        user={user}
+      />
 
       {view === "learn" ? (
         <>
@@ -127,7 +134,7 @@ export default function LearnApp({ initialView, user, topics, reviews, authError
           <FlashcardDeck open={flashOpen} onClose={() => setFlashOpen(false)} triggerRef={revealBtnRef} />
         </>
       ) : (
-        <RevisionView user={user} topics={topics} reviews={reviews} authError={authError} />
+        <RevisionView user={user} topics={topics} reviews={reviews} authError={authError} surface={revSurface} />
       )}
     </ToastProvider>
   );

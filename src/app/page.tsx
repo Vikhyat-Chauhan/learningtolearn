@@ -7,7 +7,7 @@ import { db, topics as topicsTable, reviews as reviewsTable } from "@/db";
 import { getUser } from "@/lib/supabase/server";
 import LearnApp from "@/components/LearnApp";
 import type { TopicVM, ReviewVM, UserVM } from "@/lib/revision-types";
-import type { View } from "@/components/ViewTabs";
+import type { View } from "@/components/TopNav";
 
 export default async function Home({
   searchParams,
@@ -15,7 +15,7 @@ export default async function Home({
   searchParams: Promise<{ view?: string; error?: string }>;
 }) {
   const { view, error } = await searchParams;
-  const initialView: View = view === "revision" ? "revision" : "learn";
+  const initialView: View = view === "learn" ? "learn" : "revision";
 
   const user = await getUser();
 
