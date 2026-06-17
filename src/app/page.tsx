@@ -12,9 +12,9 @@ import type { View } from "@/components/ViewTabs";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; error?: string }>;
 }) {
-  const { view } = await searchParams;
+  const { view, error } = await searchParams;
   const initialView: View = view === "revision" ? "revision" : "learn";
 
   const user = await getUser();
@@ -66,6 +66,7 @@ export default async function Home({
       user={userVM}
       topics={topicVMs}
       reviews={reviewVMs}
+      authError={error ?? null}
     />
   );
 }

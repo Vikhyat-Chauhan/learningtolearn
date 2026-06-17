@@ -1,10 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { logTopic, deleteTopic } from "@/app/actions";
+import { logTopic, deleteTopic, restoreTopic, updateTopic } from "@/app/actions";
+import { useToast } from "@/components/Toast";
 import { REVIEW_LADDER } from "@/lib/spacing";
 import { addDays, formatShort, todayISO, type ISODate } from "@/lib/dates";
 import type { TopicVM } from "@/lib/revision-types";
+
+// Turn an unknown thrown value into a user-facing message, calling out auth.
+function errorMessage(err: unknown): string {
+  const msg = err instanceof Error ? err.message : "";
+  if (/not signed in/i.test(msg)) return "Please sign in again.";
+  return "Something went wrong. Please try again.";
+}
 
 type Props = { topics: TopicVM[] };
 
@@ -15,6 +23,32 @@ export default function TopicLogger({ topics }: Props) {
   const [notes, setNotes] = useState("");
   const [loggedOn, setLoggedOn] = useState<ISODate>(todayISO());
   const [pending, startTransition] = useTransition();
+  const { toast } = useToast();
+
+  // Inline edit state for an existing logged row.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+
+  const beginEdit = (topic: TopicVM) => {
+    setEditingId(topic.id);
+    setEditTitle(topic.title);
+    setEditNotes(topic.notes ?? "");
+  };
+
+  const saveEdit = (id: string) => {
+    const t = editTitle.trim();
+    if (!t || pending) return;
+    startTransition(async () => {
+      try {
+        await updateTopic({ id, title: t, notes: editNotes.trim() || null });
+        setEditingId(null);
+        toast({ message: "Topic updated.", variant: "success" });
+      } catch (err) {
+        toast({ message: errorMessage(err), variant: "error" });
+      }
+    });
+  };
 
   const onDate = topics.filter((t) => t.loggedOn === loggedOn);
   const ladderPreview = REVIEW_LADDER.map((d) => formatShort(addDays(loggedOn, d))).join(", ");
@@ -24,15 +58,43 @@ export default function TopicLogger({ topics }: Props) {
     const t = title.trim();
     if (!t || pending) return;
     startTransition(async () => {
-      await logTopic({ title: t, notes: notes.trim() || undefined, loggedOn });
-      setTitle("");
-      setNotes("");
+      try {
+        await logTopic({ title: t, notes: notes.trim() || undefined, loggedOn });
+        setTitle("");
+        setNotes("");
+        toast({ message: `“${t}” logged — first review ${formatShort(addDays(loggedOn, REVIEW_LADDER[0]))}.`, variant: "success" });
+      } catch (err) {
+        toast({ message: errorMessage(err), variant: "error" });
+      }
     });
   };
 
-  const remove = (id: string) => {
+  const remove = (topic: TopicVM) => {
     startTransition(async () => {
-      await deleteTopic(id);
+      try {
+        await deleteTopic(topic.id);
+        toast({
+          message: `“${topic.title}” deleted.`,
+          variant: "info",
+          action: {
+            label: "Undo",
+            onClick: () =>
+              startTransition(async () => {
+                try {
+                  await restoreTopic({
+                    title: topic.title,
+                    notes: topic.notes,
+                    loggedOn: topic.loggedOn,
+                  });
+                } catch (err) {
+                  toast({ message: errorMessage(err), variant: "error" });
+                }
+              }),
+          },
+        });
+      } catch (err) {
+        toast({ message: errorMessage(err), variant: "error" });
+      }
     });
   };
 
@@ -85,22 +147,70 @@ export default function TopicLogger({ topics }: Props) {
           <p className="muted">Nothing logged for this day yet.</p>
         ) : (
           <ul>
-            {onDate.map((t) => (
-              <li key={t.id}>
-                <div>
-                  <span className="log-title-txt">{t.title}</span>
-                  {t.notes && <span className="log-notes-txt">{t.notes}</span>}
-                </div>
-                <button
-                  className="del-btn"
-                  onClick={() => remove(t.id)}
-                  disabled={pending}
-                  aria-label={`Delete ${t.title}`}
-                >
-                  ×
-                </button>
-              </li>
-            ))}
+            {onDate.map((t) =>
+              editingId === t.id ? (
+                <li key={t.id} className="log-edit-row">
+                  <div className="field">
+                    <label htmlFor={`edit-title-${t.id}`}>Topic</label>
+                    <input
+                      id={`edit-title-${t.id}`}
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      autoComplete="off"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor={`edit-notes-${t.id}`}>Notes <span className="opt">(optional)</span></label>
+                    <input
+                      id={`edit-notes-${t.id}`}
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      placeholder="A line to jog your memory later"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="log-edit-actions">
+                    <button
+                      className="log-submit"
+                      onClick={() => saveEdit(t.id)}
+                      disabled={pending || !editTitle.trim()}
+                    >
+                      {pending ? "Saving…" : "Save"}
+                    </button>
+                    <button className="btn-cancel" onClick={() => setEditingId(null)} disabled={pending}>
+                      Cancel
+                    </button>
+                  </div>
+                </li>
+              ) : (
+                <li key={t.id}>
+                  <div>
+                    <span className="log-title-txt">{t.title}</span>
+                    {t.notes && <span className="log-notes-txt">{t.notes}</span>}
+                  </div>
+                  <div className="log-row-actions">
+                    <button
+                      className="edit-btn"
+                      onClick={() => beginEdit(t)}
+                      disabled={pending}
+                      aria-label={`Edit ${t.title}`}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="del-btn"
+                      onClick={() => remove(t)}
+                      disabled={pending}
+                      aria-label={`Delete ${t.title}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </li>
+              ),
+            )}
           </ul>
         )}
       </div>
