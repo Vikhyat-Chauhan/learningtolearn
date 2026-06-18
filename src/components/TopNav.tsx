@@ -22,7 +22,7 @@ export default function TopNav({ view, onChangeView, surface, onChangeSurface, u
 
   return (
     <header className="topnav">
-      <div className="topnav-brand">Mastery</div>
+      <div className="topnav-brand">learningtolearn</div>
 
       <nav className="topnav-views" aria-label="Primary">
         <button

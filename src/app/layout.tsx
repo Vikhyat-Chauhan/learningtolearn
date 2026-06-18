@@ -14,7 +14,7 @@ const display = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "How to Master Anything — Flashcards",
+  title: "learningtolearn — Flashcards",
   description:
     "An evidence-based flashcard deck on how to actually master anything: retrieval, spacing, interleaving, deliberate practice, and the science of durable learning.",
 };

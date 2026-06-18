@@ -1,4 +1,4 @@
-# How to Master Anything — Flashcards
+# learningtolearn — Flashcards
 
 An interactive flashcard deck on the science of durable learning — retrieval
 practice, spacing, interleaving, deliberate practice, and calibration. Ten
