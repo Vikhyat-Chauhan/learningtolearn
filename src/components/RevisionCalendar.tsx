@@ -43,6 +43,9 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
   const [selected, setSelected] = useState<ISODate>(todayISO());
   const [detailTopicId, setDetailTopicId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // Tags currently selected in the filter bar (lowercased for case-insensitive
+  // matching). Empty = no filter, show everything.
+  const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -50,25 +53,71 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
   const cellRefs = useRef(new Map<ISODate, HTMLButtonElement>());
   const keyboardNav = useRef(false);
 
+  const topicById = useMemo(() => new Map(topics.map((t) => [t.id, t])), [topics]);
+
+  // The distinct set of tags in use, for the filter bar and form autosuggest.
+  // Deduped case-insensitively (first-seen casing wins), sorted alphabetically.
+  const allTags = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const t of topics)
+      for (const tag of t.tags) {
+        const key = tag.toLowerCase();
+        if (!seen.has(key)) seen.set(key, tag);
+      }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
+  }, [topics]);
+
+  // A topic passes the filter if no tags are selected, or it carries any active tag.
+  const tagMatch = (t: TopicVM) =>
+    activeTags.size === 0 || t.tags.some((tag) => activeTags.has(tag.toLowerCase()));
+
+  // Source data narrowed by the active tag filter. Reviews inherit their topic's
+  // match so the calendar badges and day-detail lists stay consistent.
+  const filteredTopics = useMemo(
+    () => topics.filter(tagMatch),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [topics, activeTags],
+  );
+  const filteredReviews = useMemo(
+    () => {
+      if (activeTags.size === 0) return reviews;
+      return reviews.filter((r) => {
+        const t = topicById.get(r.topicId);
+        return t ? tagMatch(t) : false;
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reviews, topicById, activeTags],
+  );
+
   const topicsByDay = useMemo(() => {
     const m = new Map<ISODate, TopicVM[]>();
-    for (const t of topics) (m.get(t.loggedOn) ?? m.set(t.loggedOn, []).get(t.loggedOn)!).push(t);
+    for (const t of filteredTopics) (m.get(t.loggedOn) ?? m.set(t.loggedOn, []).get(t.loggedOn)!).push(t);
     return m;
-  }, [topics]);
+  }, [filteredTopics]);
 
   const reviewsByDay = useMemo(() => {
     const m = new Map<ISODate, ReviewVM[]>();
-    for (const r of reviews) (m.get(r.dueOn) ?? m.set(r.dueOn, []).get(r.dueOn)!).push(r);
+    for (const r of filteredReviews) (m.get(r.dueOn) ?? m.set(r.dueOn, []).get(r.dueOn)!).push(r);
     return m;
-  }, [reviews]);
+  }, [filteredReviews]);
 
+  // Keyed off the full review set (not the filter) — the detail panel and undo
+  // need a topic's complete ladder regardless of what's currently filtered.
   const reviewsByTopic = useMemo(() => {
     const m = new Map<string, ReviewVM[]>();
     for (const r of reviews) (m.get(r.topicId) ?? m.set(r.topicId, []).get(r.topicId)!).push(r);
     return m;
   }, [reviews]);
 
-  const topicById = useMemo(() => new Map(topics.map((t) => [t.id, t])), [topics]);
+  const toggleTag = (tag: string) =>
+    setActiveTags((prev) => {
+      const key = tag.toLowerCase();
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const grid: ISODate[][] = mode === "month" ? monthMatrix(anchor) : [weekDays(anchor)];
   const flatDays = grid.flat();
@@ -152,6 +201,7 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
                   await restoreTopic({
                     title: topic.title,
                     notes: topic.notes,
+                    tags: topic.tags,
                     loggedOn: topic.loggedOn,
                     completedIntervals,
                   });
@@ -167,20 +217,20 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
     });
   };
 
-  const saveTopic = (topic: TopicVM, fields: { title: string; notes: string }) =>
+  const saveTopic = (topic: TopicVM, fields: { title: string; notes: string; tags: string[] }) =>
     startTransition(async () => {
       try {
-        await updateTopic({ id: topic.id, title: fields.title, notes: fields.notes || null });
+        await updateTopic({ id: topic.id, title: fields.title, notes: fields.notes || null, tags: fields.tags });
         toast({ message: "Topic updated.", variant: "success" });
       } catch (err) {
         toast({ message: errorMessage(err), variant: "error" });
       }
     });
 
-  const addTopic = (fields: { title: string; notes: string }) =>
+  const addTopic = (fields: { title: string; notes: string; tags: string[] }) =>
     startTransition(async () => {
       try {
-        await logTopic({ title: fields.title, notes: fields.notes || undefined, loggedOn: selected });
+        await logTopic({ title: fields.title, notes: fields.notes || undefined, tags: fields.tags, loggedOn: selected });
         setAdding(false);
         toast({
           message: `“${fields.title}” logged — first review ${formatShort(addDays(selected, reviewLadder[0]))}.`,
@@ -288,6 +338,30 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
         </>
       )}
 
+      {allTags.length > 0 && (
+        <div className="tag-filter" role="group" aria-label="Filter by tag">
+          {allTags.map((tag) => {
+            const on = activeTags.has(tag.toLowerCase());
+            return (
+              <button
+                key={tag}
+                type="button"
+                className={`tag-filter-chip ${on ? "active" : ""}`}
+                aria-pressed={on}
+                onClick={() => toggleTag(tag)}
+              >
+                {tag}
+              </button>
+            );
+          })}
+          {activeTags.size > 0 && (
+            <button type="button" className="tag-filter-clear" onClick={() => setActiveTags(new Set())}>
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
       <div className={`day-detail${pending ? " is-pending" : ""}`}>
         <h3>{isToday(selected) ? `Today · ${formatShort(selected)}` : formatDay(selected)}</h3>
 
@@ -309,6 +383,13 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
                     >
                       <span className={`log-title-txt ${r.completed ? "done" : ""}`}>{r.topicTitle}</span>
                       {topic?.notes && <span className="log-notes-txt">{topic.notes}</span>}
+                      {topic && topic.tags.length > 0 && (
+                        <span className="tag-list">
+                          {topic.tags.map((tag) => (
+                            <span key={tag} className="tag-pill">{tag}</span>
+                          ))}
+                        </span>
+                      )}
                     </button>
                     {overdue && <span className="overdue-tag">overdue</span>}
                     <input
@@ -348,6 +429,13 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
                   >
                     <span className="log-title-txt">{t.title}</span>
                     {t.notes && <span className="log-notes-txt">{t.notes}</span>}
+                    {t.tags.length > 0 && (
+                      <span className="tag-list">
+                        {t.tags.map((tag) => (
+                          <span key={tag} className="tag-pill">{tag}</span>
+                        ))}
+                      </span>
+                    )}
                   </button>
                   <button
                     className="del-btn"
@@ -368,6 +456,7 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
         <TopicDetail
           topic={detailTopic}
           reviews={reviewsByTopic.get(detailTopic.id) ?? []}
+          tagSuggestions={allTags}
           pending={pending}
           onClose={() => setDetailTopicId(null)}
           onToggleReview={toggleReview}
@@ -380,6 +469,7 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
         <AddTopic
           day={selected}
           reviewLadder={reviewLadder}
+          tagSuggestions={allTags}
           pending={pending}
           onClose={() => setAdding(false)}
           onSubmit={addTopic}
