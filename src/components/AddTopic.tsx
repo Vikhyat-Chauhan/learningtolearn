@@ -20,10 +20,26 @@ type Props = {
 export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
+  const keepEditingRef = useRef<HTMLButtonElement>(null);
   useFocusTrap(panelRef, true);
 
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  // True once the user has typed anything worth protecting from an accidental
+  // dismissal.
+  const isDirty = title.trim() !== "" || notes.trim() !== "";
+
+  // Grow the notes textarea to fit its content: reset to auto so it can shrink,
+  // then size to the scroll height.
+  const autoGrow = () => {
+    const el = notesRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,20 +48,40 @@ export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit
     onSubmit({ title: t, notes: notes.trim() });
   };
 
-  // Focus the title field on open and wire up Esc-to-close.
+  // Guard dismissals: if there's unsaved input, ask before closing.
+  const requestClose = () => {
+    if (isDirty && !pending) setShowConfirm(true);
+    else onClose();
+  };
+
+  // Focus the title field on open and wire up Esc handling. While the confirm
+  // popup is open, Esc dismisses the popup ("keep editing") rather than the panel.
   useEffect(() => {
     titleRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      if (showConfirm) setShowConfirm(false);
+      else requestClose();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose, showConfirm, isDirty, pending]);
+
+  // Set the initial textarea height for any prefilled notes.
+  useEffect(() => {
+    autoGrow();
+  }, []);
+
+  // Move focus to the safe choice when the confirm popup opens.
+  useEffect(() => {
+    if (showConfirm) keepEditingRef.current?.focus();
+  }, [showConfirm]);
 
   const ladderPreview = reviewLadder.map((d) => formatShort(addDays(day, d))).join(", ");
 
   return (
-    <div className="td-overlay" onClick={onClose}>
+    <div className="td-overlay" onClick={requestClose}>
       <div
         ref={panelRef}
         className="td-panel"
@@ -54,7 +90,7 @@ export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit
         aria-label={`Add topic covered on ${formatDay(day)}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <button className="td-close" aria-label="Close" onClick={onClose}>
+        <button className="td-close" aria-label="Close" onClick={requestClose}>
           ×
         </button>
 
@@ -76,19 +112,24 @@ export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit
           </div>
           <div className="field">
             <label htmlFor="add-notes">Notes <span className="opt">(optional)</span></label>
-            <input
+            <textarea
               id="add-notes"
+              ref={notesRef}
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                setNotes(e.target.value);
+                autoGrow();
+              }}
               placeholder="A line to jog your memory later"
               autoComplete="off"
+              rows={1}
             />
           </div>
           <div className="td-edit-actions">
             <button className="log-submit" type="submit" disabled={pending || !title.trim()}>
               {pending ? "Saving…" : "Add"}
             </button>
-            <button className="btn-cancel" type="button" onClick={onClose} disabled={pending}>
+            <button className="btn-cancel" type="button" onClick={requestClose} disabled={pending}>
               Cancel
             </button>
           </div>
@@ -97,6 +138,39 @@ export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit
         <p className="ladder-hint">
           Reviews will surface on <strong>{ladderPreview}</strong>.
         </p>
+
+        {showConfirm && (
+          <div className="confirm-overlay" onClick={() => setShowConfirm(false)}>
+            <div
+              className="confirm-box"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="add-confirm-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 id="add-confirm-title" className="confirm-title">
+                Discard this topic?
+              </h3>
+              <p className="confirm-text">
+                You&apos;ve started filling this in. If you leave now, your topic and
+                notes won&apos;t be saved.
+              </p>
+              <div className="confirm-actions">
+                <button
+                  ref={keepEditingRef}
+                  className="btn-cancel"
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                >
+                  Keep editing
+                </button>
+                <button className="confirm-discard" type="button" onClick={onClose}>
+                  Discard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
