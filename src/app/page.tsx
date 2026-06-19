@@ -48,6 +48,7 @@ export default async function Home({
       id: t.id,
       title: t.title,
       notes: t.notes,
+      tags: t.tags ?? [],
       loggedOn: t.loggedOn,
     }));
 

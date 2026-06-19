@@ -7,6 +7,7 @@ export type TopicVM = {
   id: string;
   title: string;
   notes: string | null;
+  tags: string[];
   loggedOn: ISODate;
 };
 

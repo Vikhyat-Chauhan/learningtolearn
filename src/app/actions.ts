@@ -10,6 +10,7 @@ import { db, topics, reviews, profiles } from "@/db";
 import { getUser } from "@/lib/supabase/server";
 import { DEFAULT_LADDER, validateLadder } from "@/lib/spacing";
 import { addDays, type ISODate } from "@/lib/dates";
+import { normalizeTags } from "@/lib/tags";
 
 class AuthError extends Error {
   constructor() {
@@ -49,6 +50,7 @@ export async function updateReviewLadder(values: number[]) {
 export type LogTopicInput = {
   title: string;
   notes?: string;
+  tags?: string[];
   loggedOn: ISODate;
 };
 
@@ -67,6 +69,7 @@ export async function logTopic(input: LogTopicInput) {
       userId,
       title,
       notes: input.notes?.trim() || null,
+      tags: normalizeTags(input.tags),
       loggedOn,
     })
     .returning({ id: topics.id });
@@ -101,9 +104,14 @@ export async function uncompleteReview(reviewId: string) {
   revalidatePath("/");
 }
 
-export type UpdateTopicInput = { id: string; title: string; notes?: string | null };
+export type UpdateTopicInput = {
+  id: string;
+  title: string;
+  notes?: string | null;
+  tags?: string[];
+};
 
-// Edit an existing topic's title/notes in place. The covered-on date is not
+// Edit an existing topic's title/notes/tags in place. The covered-on date is not
 // editable, so the review ladder (whose due dates derive from it) is untouched.
 export async function updateTopic(input: UpdateTopicInput) {
   const userId = await requireUserId();
@@ -111,7 +119,7 @@ export async function updateTopic(input: UpdateTopicInput) {
   if (!title) throw new Error("Title is required");
   await db
     .update(topics)
-    .set({ title, notes: input.notes?.trim() || null })
+    .set({ title, notes: input.notes?.trim() || null, tags: normalizeTags(input.tags) })
     .where(and(eq(topics.id, input.id), eq(topics.userId, userId)));
   revalidatePath("/");
 }
@@ -126,6 +134,7 @@ export async function deleteTopic(topicId: string) {
 export type RestoreTopicInput = {
   title: string;
   notes?: string | null;
+  tags?: string[];
   loggedOn: ISODate;
   /** Interval indexes (0–4) that were already completed, to preserve checkmarks. */
   completedIntervals?: number[];
@@ -147,6 +156,7 @@ export async function restoreTopic(input: RestoreTopicInput) {
       userId,
       title,
       notes: input.notes?.trim() || null,
+      tags: normalizeTags(input.tags),
       loggedOn: input.loggedOn,
     })
     .returning({ id: topics.id });

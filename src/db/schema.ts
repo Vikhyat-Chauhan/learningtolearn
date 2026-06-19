@@ -36,6 +36,9 @@ export const topics = pgTable(
     userId: uuid("user_id").notNull(),
     title: text("title").notNull(),
     notes: text("notes"),
+    // Free-text labels for categorizing/filtering topics. Stored as a text array
+    // (no join table); defaults to empty so existing rows backfill cleanly.
+    tags: text("tags").array().notNull().default([]),
     // The day the topic was covered (YYYY-MM-DD; no time, no tz drift).
     loggedOn: date("logged_on").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

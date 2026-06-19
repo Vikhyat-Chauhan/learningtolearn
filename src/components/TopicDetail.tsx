@@ -4,16 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { daysBetween, formatDay, todayISO } from "@/lib/dates";
 import type { TopicVM, ReviewVM } from "@/lib/revision-types";
+import TagInput from "@/components/TagInput";
 
 type Props = {
   topic: TopicVM;
   /** All reviews for this topic, in ladder order. */
   reviews: ReviewVM[];
+  /** Previously-used tags across all topics, for autosuggest in the edit form. */
+  tagSuggestions: string[];
   pending: boolean;
   onClose: () => void;
   onToggleReview: (r: ReviewVM) => void;
   onDelete: (topic: TopicVM) => void;
-  onSave: (topic: TopicVM, fields: { title: string; notes: string }) => void;
+  onSave: (topic: TopicVM, fields: { title: string; notes: string; tags: string[] }) => void;
 };
 
 // A slide-in panel showing one topic's full revision timeline: when it was
@@ -22,6 +25,7 @@ type Props = {
 export default function TopicDetail({
   topic,
   reviews,
+  tagSuggestions,
   pending,
   onClose,
   onToggleReview,
@@ -36,19 +40,21 @@ export default function TopicDetail({
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(topic.title);
   const [editNotes, setEditNotes] = useState(topic.notes ?? "");
+  const [editTags, setEditTags] = useState<string[]>(topic.tags);
 
   const today = todayISO();
 
   const startEdit = () => {
     setEditTitle(topic.title);
     setEditNotes(topic.notes ?? "");
+    setEditTags(topic.tags);
     setEditing(true);
   };
 
   const saveEdit = () => {
     const title = editTitle.trim();
     if (!title) return;
-    onSave(topic, { title, notes: editNotes.trim() });
+    onSave(topic, { title, notes: editNotes.trim(), tags: editTags });
     setEditing(false);
   };
 
@@ -116,6 +122,16 @@ export default function TopicDetail({
                 autoComplete="off"
               />
             </div>
+            <div className="field">
+              <label htmlFor="td-edit-tags">Tags <span className="opt">(optional)</span></label>
+              <TagInput
+                id="td-edit-tags"
+                value={editTags}
+                onChange={setEditTags}
+                suggestions={tagSuggestions}
+                placeholder="e.g. Statistics, Exam prep"
+              />
+            </div>
             <div className="td-edit-actions">
               <button className="log-submit" onClick={saveEdit} disabled={pending || !editTitle.trim()}>
                 {pending ? "Saving…" : "Save"}
@@ -134,6 +150,13 @@ export default function TopicDetail({
               </button>
             </div>
             {topic.notes && <p className="td-notes">{topic.notes}</p>}
+            {topic.tags.length > 0 && (
+              <ul className="tag-list">
+                {topic.tags.map((tag) => (
+                  <li key={tag} className="tag-pill">{tag}</li>
+                ))}
+              </ul>
+            )}
           </>
         )}
         <p className="td-meta">Covered on {formatDay(topic.loggedOn)}</p>

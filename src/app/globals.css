@@ -828,6 +828,164 @@
   outline-offset: 1px;
   border-color: var(--sage);
 }
+
+/* ── Tags: input, chips, suggestions, read-only pills, filter bar ── */
+.tag-input {
+  position: relative;
+}
+.tag-input-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--paper-edge);
+  background: #fff;
+  border-radius: 10px;
+  padding: 7px 9px;
+  cursor: text;
+}
+.tag-input-field:focus-within {
+  outline: 2px solid var(--sage);
+  outline-offset: 1px;
+  border-color: var(--sage);
+}
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(134, 168, 155, 0.22);
+  color: #3a5249;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 3px 4px 3px 9px;
+  border-radius: 100px;
+  line-height: 1.2;
+}
+.tag-chip-remove {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  opacity: 0.65;
+}
+.tag-chip-remove:hover {
+  opacity: 1;
+  color: var(--persimmon);
+}
+.tag-input-text {
+  appearance: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--graphite);
+  flex: 1 1 80px;
+  min-width: 80px;
+  padding: 3px 2px;
+}
+.tag-suggestions {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--paper-edge);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px -16px rgba(19, 33, 30, 0.5);
+  max-height: 180px;
+  overflow-y: auto;
+}
+.tag-suggestion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--graphite);
+  padding: 7px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.tag-suggestion:hover {
+  background: rgba(134, 168, 155, 0.18);
+}
+
+/* Read-only display chips (detail panel + day-detail lists). */
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(134, 168, 155, 0.22);
+  color: #3a5249;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 100px;
+  line-height: 1.4;
+}
+
+/* Filter bar above the day detail. */
+.tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin: 4px 0 14px;
+}
+.tag-filter-chip {
+  appearance: none;
+  border: 1px solid var(--paper-edge);
+  background: #fff;
+  color: var(--graphite);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.tag-filter-chip:hover {
+  border-color: var(--sage);
+}
+.tag-filter-chip.active {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: #fff;
+}
+.tag-filter-clear {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--persimmon);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 6px;
+  cursor: pointer;
+}
+.tag-filter-clear:hover {
+  text-decoration: underline;
+}
 .log-submit {
   appearance: none;
   border: none;

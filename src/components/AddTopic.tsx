@@ -3,21 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { addDays, formatDay, formatShort, type ISODate } from "@/lib/dates";
+import TagInput from "@/components/TagInput";
 
 type Props = {
   /** The day the topic will be logged against (the selected calendar cell). */
   day: ISODate;
   /** The user's current review ladder, for the schedule preview. */
   reviewLadder: number[];
+  /** Previously-used tags across all topics, for autosuggest. */
+  tagSuggestions: string[];
   pending: boolean;
   onClose: () => void;
-  onSubmit: (fields: { title: string; notes: string }) => void;
+  onSubmit: (fields: { title: string; notes: string; tags: string[] }) => void;
 };
 
 // A slide-in panel for logging a new topic against the selected calendar day.
 // Mirrors TopicDetail's overlay shell so it shares the look, focus trap, and
 // Esc-to-close behaviour.
-export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit }: Props) {
+export default function AddTopic({ day, reviewLadder, tagSuggestions, pending, onClose, onSubmit }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
@@ -26,11 +29,12 @@ export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit
 
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // True once the user has typed anything worth protecting from an accidental
-  // dismissal.
-  const isDirty = title.trim() !== "" || notes.trim() !== "";
+  // True once the user has typed/added anything worth protecting from an
+  // accidental dismissal.
+  const isDirty = title.trim() !== "" || notes.trim() !== "" || tags.length > 0;
 
   // Grow the notes textarea to fit its content: reset to auto so it can shrink,
   // then size to the scroll height.
@@ -45,7 +49,7 @@ export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit
     e.preventDefault();
     const t = title.trim();
     if (!t || pending) return;
-    onSubmit({ title: t, notes: notes.trim() });
+    onSubmit({ title: t, notes: notes.trim(), tags });
   };
 
   // Guard dismissals: if there's unsaved input, ask before closing.
@@ -125,6 +129,16 @@ export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit
               rows={1}
             />
           </div>
+          <div className="field">
+            <label htmlFor="add-tags">Tags <span className="opt">(optional)</span></label>
+            <TagInput
+              id="add-tags"
+              value={tags}
+              onChange={setTags}
+              suggestions={tagSuggestions}
+              placeholder="e.g. Statistics, Exam prep"
+            />
+          </div>
           <div className="td-edit-actions">
             <button className="log-submit" type="submit" disabled={pending || !title.trim()}>
               {pending ? "Saving…" : "Add"}
@@ -152,8 +166,8 @@ export default function AddTopic({ day, reviewLadder, pending, onClose, onSubmit
                 Discard this topic?
               </h3>
               <p className="confirm-text">
-                You&apos;ve started filling this in. If you leave now, your topic and
-                notes won&apos;t be saved.
+                You&apos;ve started filling this in. If you leave now, your topic,
+                notes, and tags won&apos;t be saved.
               </p>
               <div className="confirm-actions">
                 <button
