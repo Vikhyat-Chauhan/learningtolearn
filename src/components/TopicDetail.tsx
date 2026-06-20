@@ -35,6 +35,7 @@ export default function TopicDetail({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const editTitleRef = useRef<HTMLInputElement>(null);
+  const editNotesRef = useRef<HTMLTextAreaElement>(null);
   useFocusTrap(panelRef, true);
 
   const [editing, setEditing] = useState(false);
@@ -43,6 +44,15 @@ export default function TopicDetail({
   const [editTags, setEditTags] = useState<string[]>(topic.tags);
 
   const today = todayISO();
+
+  // Grow the notes textarea to fit its content: reset to auto so it can shrink,
+  // then size to the scroll height.
+  const autoGrow = () => {
+    const el = editNotesRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
 
   const startEdit = () => {
     setEditTitle(topic.title);
@@ -58,9 +68,13 @@ export default function TopicDetail({
     setEditing(false);
   };
 
-  // Focus the title field when the edit form opens.
+  // Focus the title field when the edit form opens, and size the notes textarea
+  // to fit any prefilled notes (it only mounts once editing is true).
   useEffect(() => {
-    if (editing) editTitleRef.current?.focus();
+    if (editing) {
+      editTitleRef.current?.focus();
+      autoGrow();
+    }
   }, [editing]);
 
   // Show one row per review rung. Each topic carries its own materialized reviews,
@@ -114,12 +128,17 @@ export default function TopicDetail({
             </div>
             <div className="field">
               <label htmlFor="td-edit-notes">Notes <span className="opt">(optional)</span></label>
-              <input
+              <textarea
                 id="td-edit-notes"
+                ref={editNotesRef}
                 value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
+                onChange={(e) => {
+                  setEditNotes(e.target.value);
+                  autoGrow();
+                }}
                 placeholder="A line to jog your memory later"
                 autoComplete="off"
+                rows={1}
               />
             </div>
             <div className="field">

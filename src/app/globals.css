@@ -1857,6 +1857,7 @@
   font-size: 14px;
   color: var(--muted);
   line-height: 1.5;
+  white-space: pre-wrap;
 }
 .td-meta {
   margin-top: 6px;
