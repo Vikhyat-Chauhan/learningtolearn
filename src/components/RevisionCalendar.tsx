@@ -383,6 +383,10 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
                       onClick={() => setDetailTopicId(r.topicId)}
                       aria-label={`View details for ${r.topicTitle}`}
                     >
+                      {/* Title/notes here stay plain text: they live inside this open
+                          button, and an <a> nested in a <button> is invalid and would
+                          fight the open-on-click. Links go live in the TopicDetail panel
+                          this button opens. */}
                       <span className={`log-title-txt ${r.completed ? "done" : ""}`}>{r.topicTitle}</span>
                       {topic?.notes && <span className="log-notes-txt">{topic.notes}</span>}
                       {topic && topic.tags.length > 0 && (

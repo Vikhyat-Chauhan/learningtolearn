@@ -5,6 +5,7 @@ import { useFocusTrap } from "@/lib/useFocusTrap";
 import { daysBetween, formatDay, todayISO } from "@/lib/dates";
 import type { TopicVM, ReviewVM } from "@/lib/revision-types";
 import TagInput from "@/components/TagInput";
+import { Linkify } from "@/lib/linkify";
 
 type Props = {
   topic: TopicVM;
@@ -163,12 +164,12 @@ export default function TopicDetail({
         ) : (
           <>
             <div className="td-title-row">
-              <h3 className="td-title">{topic.title}</h3>
+              <h3 className="td-title"><Linkify text={topic.title} /></h3>
               <button className="td-edit-btn" onClick={startEdit} disabled={pending}>
                 Edit
               </button>
             </div>
-            {topic.notes && <p className="td-notes">{topic.notes}</p>}
+            {topic.notes && <p className="td-notes"><Linkify text={topic.notes} /></p>}
             {topic.tags.length > 0 && (
               <ul className="tag-list">
                 {topic.tags.map((tag) => (

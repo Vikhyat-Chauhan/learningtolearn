@@ -1859,6 +1859,12 @@
   line-height: 1.5;
   white-space: pre-wrap;
 }
+.td-notes a,
+.td-title a {
+  color: var(--persimmon);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
 .td-meta {
   margin-top: 6px;
   font-size: 12.5px;
