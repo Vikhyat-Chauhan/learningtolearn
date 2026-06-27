@@ -132,7 +132,9 @@ export default function RevisionCalendar({ topics, reviews, reviewLadder, surfac
   const isOverdueDay = (iso: ISODate) => iso < today && dueCount(iso) > 0;
 
   const selectedTopics = topicsByDay.get(selected) ?? [];
-  const selectedReviews = reviewsByDay.get(selected) ?? [];
+  const selectedReviews = [...(reviewsByDay.get(selected) ?? [])].sort(
+    (a, b) => Number(a.completed) - Number(b.completed)
+  );
 
   // Derive the open topic from props (not stored state) so the panel reflects
   // edits after the page revalidates.
